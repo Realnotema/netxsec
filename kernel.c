@@ -121,3 +121,4 @@ port_info_t kernelPortsPrint (int port) {
     fclose(file);
     return info;
 }
+
