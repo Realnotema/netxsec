@@ -19,18 +19,7 @@ Code by Realnotema
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <netinet/if_ether.h>
-
-typedef struct {
-    char *interface;
-    char *dest_ip;
-    int port;
-    uint8_t flags;
-} send_args_tcp_t;
-
-typedef struct {
-    const char *interface;
-    const char *source_ip;
-} send_args_icmp_t;
+#include "kernel.h"
 
 libnet_t *kernelBuildTCP(libnet_t *lc, int port, uint8_t flags, u_int32_t ipaddr, char errbuf_libnet[]) {
     libnet_ptag_t tcp_tag = libnet_build_tcp(
@@ -61,7 +50,7 @@ void kernelSendTCP(void *args) {
 
     char errbuf_libnet[LIBNET_ERRBUF_SIZE];
     libnet_t *lc = libnet_init(LIBNET_RAW4, inter, errbuf_libnet);
-    u_int32_t ip_addr = libnet_name2addr4(lc, destip, LIBNET_DONT_RESOLVE);
+    u_int32_t ip_addr = libnet_name2addr4(lc, destip, LIBNET_RESOLVE);
     lc = kernelBuildTCP(lc, port, flags, ip_addr, errbuf_libnet);
     int written = libnet_write(lc);
 
@@ -93,21 +82,42 @@ void kernelSendICMP(void *args) {
 
     char errbuf_libnet[LIBNET_ERRBUF_SIZE];
     libnet_t *lc = libnet_init(LIBNET_RAW4, inter, errbuf_libnet);
-    u_int32_t ip_addr = libnet_name2addr4(lc, destip, LIBNET_DONT_RESOLVE);
+    u_int32_t ip_addr = libnet_name2addr4(lc, destip, LIBNET_RESOLVE);
     lc = kernelBuildICMP(lc, ip_addr, errbuf_libnet);
     int written = libnet_write(lc);
 
     libnet_destroy(lc);
 }
 
-int main() {
-    send_args_tcp_t send_args;
-    send_args.interface = "en0";
-    send_args.dest_ip = "45.33.32.156";
-    send_args.flags = TH_SYN;
-    send_args.port = 22;
+// Nowadays Unix-only
+port_info_t kernelPortsPrint (int port) {
+    port_info_t info;
+    info.port = -1;
+    FILE *file = fopen("/etc/services", "r");
+    if (file == NULL)
+        return info;
 
-    kernelSendICMP((void*)&send_args);
-    
-    return 0;
+    char line[256];
+    char service_name[64];
+    int service_port;
+    char proto[16];
+
+    while (fgets(line, sizeof(line), file)) {
+        if (line[0] == '#') {
+            continue;
+        }
+
+        if (sscanf(line, "%63s %d/%15s", service_name, &service_port, proto) == 3) {
+            if (service_port == port) {
+                info.port = port;
+                info.service_name = service_name;
+                info.proto = proto;
+                fclose(file);
+                return info;
+            }
+        }
+    }
+
+    fclose(file);
+    return info;
 }
