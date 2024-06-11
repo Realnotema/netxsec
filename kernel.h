@@ -19,15 +19,27 @@ typedef struct {
 } send_args_tcp_t;
 
 typedef struct {
-    const char *interface;
-    const char *source_ip;
+    char *interface;
+    char *source_ip;
 } send_args_icmp_t;
 
 typedef struct {
     int port;
-    const char *service_name;
-    const char *proto;
+    char *service_name;
+    char *proto;
 } port_info_t;
+
+typedef struct {
+    const char *interface;
+    int port;
+    const char *source_ip;
+    char *proto;
+    uint8_t flags; 
+} read_args_t;
+
+static char errbuf_libnet[LIBNET_ERRBUF_SIZE];
+static char errbuf_pcap[PCAP_ERRBUF_SIZE];
+static libnet_t *lc = NULL;
 
 libnet_t *kernelBuildTCP(libnet_t *lc, int port, uint8_t flags, u_int32_t ipaddr, char errbuf_libnet[]);
 
@@ -38,5 +50,9 @@ libnet_t *kernelBuildICMP(libnet_t *lc, u_int32_t ipaddr, char errbuf_libnet[]);
 void kernelSendICMP(void *args);
 
 port_info_t kernelPortsPrint(int port);
+
+void kernelRead(void *args);
+
+void kernelSendPacket(void *args, int proto);
 
 #endif /* KERNEL_H */

@@ -43,6 +43,11 @@ libnet_t *kernelBuildTCP(libnet_t *lc, int port, uint8_t flags, u_int32_t ipaddr
 
 void kernelSendTCP(void *args) {
     send_args_tcp_t *send_args = (send_args_tcp_t *)args;
+    if (send_args == NULL || send_args->interface == NULL || send_args->dest_ip == NULL) {
+        fprintf(stderr, "Error: Invalid send arguments\n");
+        return;
+    }
+
     char *inter = send_args->interface;
     char *destip = send_args->dest_ip;
     int port = send_args->port;
@@ -50,12 +55,35 @@ void kernelSendTCP(void *args) {
 
     char errbuf_libnet[LIBNET_ERRBUF_SIZE];
     libnet_t *lc = libnet_init(LIBNET_RAW4, inter, errbuf_libnet);
+    if (lc == NULL) {
+        fprintf(stderr, "Error: Failed to initialize libnet - %s\n", errbuf_libnet);
+        return;
+    }
+
     u_int32_t ip_addr = libnet_name2addr4(lc, destip, LIBNET_RESOLVE);
+    if (ip_addr == -1) {
+        fprintf(stderr, "Error: Failed to resolve destination IP address\n");
+        libnet_destroy(lc);
+        return;
+    }
+
     lc = kernelBuildTCP(lc, port, flags, ip_addr, errbuf_libnet);
+    if (lc == NULL) {
+        fprintf(stderr, "Error: Failed to build TCP packet - %s\n", errbuf_libnet);
+        libnet_destroy(lc);
+        return;
+    }
+
     int written = libnet_write(lc);
+    if (written == -1) {
+        fprintf(stderr, "Error: Failed to send TCP packet - %s\n", libnet_geterror(lc));
+    } else {
+        printf("Successfully sent TCP packet to %s:%d\n", destip, port);
+    }
 
     libnet_destroy(lc);
 }
+
 
 libnet_t *kernelBuildICMP(libnet_t *lc, u_int32_t ipaddr, char errbuf_libnet[]) {
     libnet_ptag_t icmp_tag = libnet_build_icmpv4_echo(
@@ -120,5 +148,50 @@ port_info_t kernelPortsPrint (int port) {
 
     fclose(file);
     return info;
+}
+
+void kernelRead(void *args) {
+    read_args_t *info = (read_args_t *)args;
+    if (info == NULL || info->interface == NULL) {
+        fprintf(stderr, "Error: Invalid read arguments\n");
+        return;
+    }
+
+    char errbuf[PCAP_ERRBUF_SIZE];
+    struct bpf_program fp;
+    bpf_u_int32 mask;
+    bpf_u_int32 net;
+    struct pcap_pkthdr header;
+    char filter_exp[100];
+    sprintf(filter_exp, "host %s and port %d", info->source_ip, info->port);
+
+    pcap_lookupnet(info->interface, &net, &mask, errbuf);
+    pcap_t *handle = pcap_open_live(info->interface, BUFSIZ, 1, 1000, errbuf);
+    if (handle == NULL) {
+        fprintf(stderr, "Error: Failed to open device - %s\n", errbuf);
+        return;
+    }
+
+    if (pcap_compile(handle, &fp, filter_exp, 0, net) == -1) {
+        fprintf(stderr, "Error: Failed to compile filter expression\n");
+        pcap_close(handle);
+        return;
+    }
+
+    if (pcap_setfilter(handle, &fp) == -1) {
+        fprintf(stderr, "Error: Failed to set filter\n");
+        pcap_close(handle);
+        return;
+    }
+
+    const u_char *packet;
+    while ((packet = pcap_next(handle, &header)) != NULL) {
+        struct tcphdr *tcp_hdr = (struct tcphdr *)(packet + sizeof(struct ether_header) + sizeof(struct ip));
+        if ((tcp_hdr->th_flags & (TH_SYN | TH_ACK)) == (TH_SYN | TH_ACK)) {
+            printf("Open port: %d\n", info->port);
+        }
+    }
+
+    pcap_close(handle);
 }
 
