@@ -43,7 +43,7 @@ static libnet_t *lc = NULL;
 
 libnet_t *kernelBuildTCP(libnet_t *lc, int port, uint8_t flags, u_int32_t ipaddr, char errbuf_libnet[]);
 
-void kernelSendTCP(void *args);
+void *kernelSendTCP(void *args);
 
 libnet_t *kernelBuildICMP(libnet_t *lc, u_int32_t ipaddr, char errbuf_libnet[]);
 
@@ -51,8 +51,6 @@ void kernelSendICMP(void *args);
 
 port_info_t kernelPortsPrint(int port);
 
-void kernelRead(void *args);
-
-void kernelSendPacket(void *args, int proto);
+void *kernelRead(void *args);
 
 #endif /* KERNEL_H */
