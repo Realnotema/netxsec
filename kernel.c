@@ -19,8 +19,49 @@ Code by Realnotema
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <netinet/if_ether.h>
+#include <netinet/ip_icmp.h> 
 #include <pthread.h>
 #include "kernel.h"
+
+int host_up = 0;
+
+void init_port_array(DynamicPortArray *arr, int initial_capacity) {
+    arr->ports = (int *)malloc(initial_capacity * sizeof(int));
+    arr->size = 0;
+    arr->capacity = initial_capacity;
+    arr->front = 0;
+    arr->rear = -1;
+}
+
+void push_port(DynamicPortArray *arr, int port) {
+    if (arr->size == arr->capacity) {
+        arr->capacity *= 2;
+        arr->ports = (int *)realloc(arr->ports, arr->capacity * sizeof(int));
+    }
+    arr->rear = (arr->rear + 1) % arr->capacity;
+    arr->ports[arr->rear] = port;
+    arr->size++;
+}
+
+int pop_port(DynamicPortArray *arr) {
+    if (arr->size == 0) {
+        fprintf(stderr, "Error: No ports to pop\n");
+        return -1;
+    }
+    int port = arr->ports[arr->front];
+    arr->front = (arr->front + 1) % arr->capacity;
+    arr->size--;
+    return port;
+}
+
+void free_port_array(DynamicPortArray *arr) {
+    free(arr->ports);
+    arr->ports = NULL;
+    arr->size = 0;
+    arr->capacity = 0;
+    arr->front = 0;
+    arr->rear = -1;
+}
 
 libnet_t *kernelBuildTCP(libnet_t *lc, int port, uint8_t flags, u_int32_t ipaddr, char errbuf_libnet[]) {
     libnet_ptag_t tcp_tag = libnet_build_tcp(
@@ -100,7 +141,7 @@ libnet_t *kernelBuildICMP(libnet_t *lc, u_int32_t ipaddr, char errbuf_libnet[]) 
     return lc;
 }
 
-void kernelSendICMP(void *args) {
+void *kernelSendICMP(void *args) {
     send_args_tcp_t *send_args = (send_args_tcp_t *)args;
     char *inter = send_args->interface;
     char *destip = send_args->dest_ip;
@@ -114,6 +155,7 @@ void kernelSendICMP(void *args) {
     int written = libnet_write(lc);
 
     libnet_destroy(lc);
+    return NULL;
 }
 
 // Nowadays Unix-only
@@ -196,7 +238,15 @@ void *kernelRead(void *args) {
             struct tcphdr *tcp_hdr = (struct tcphdr *)(packet + sizeof(struct ether_header) + ip_hdr->ip_hl * 4);
 
             if ((tcp_hdr->th_flags & (TH_SYN | TH_ACK)) == (TH_SYN | TH_ACK)) {
-                printf("Open port: %d\n", ntohs(tcp_hdr->th_sport));
+                push_port(info->port_array, ntohs(tcp_hdr->th_sport));
+            }
+        }
+        if (ip_hdr->ip_p == IPPROTO_ICMP) {
+            struct icmp *icmp_hdr = (struct icmp *)(packet + sizeof(struct ether_header) + ip_hdr->ip_hl * 4);
+        
+            if (icmp_hdr->icmp_type == ICMP_ECHOREPLY) {
+                //printf("Received ICMP ECHO REPLY from: %s\n", inet_ntoa(ip_hdr->ip_src));
+                host_up = 1;
             }
         }
     }

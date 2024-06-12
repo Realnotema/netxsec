@@ -1,2 +1,2 @@
 all:
-	gcc main.c kernel.c -o run -lnet -lpcap -lpthread
+	gcc methods.c kernel.c -o run -lnet -lpcap -lpthread
