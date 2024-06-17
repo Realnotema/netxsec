@@ -3,6 +3,18 @@
 #include "kernel.h"
 #include "methods.h"
 
+void hello() {
+    printf("\n╔╗─╔╦═══╦════╦══╗╔══╦══╦═══╦══╗\n"
+            "║╚═╝║╔══╩═╗╔═╩═╗║║╔═╣╔═╣╔══╣╔═╝\n"
+            "║╔╗─║╚══╗─║║───║╚╝║─║╚═╣╚══╣║\n"
+            "║║╚╗║╔══╝─║║───║╔╗║─╚═╗║╔══╣║\n"
+            "║║─║║╚══╗─║║─╔═╝║║╚═╦═╝║╚══╣╚═╗\n"
+            "╚╝─╚╩═══╝─╚╝─╚══╝╚══╩══╩═══╩══╝\n"
+            "by realnotema\n\n"
+    );
+
+}
+
 int isHostUp (void *argsSend, void *argsRead) {
     send_args_tcp_t *send_args = (send_args_tcp_t *) argsSend;
     read_args_t *read_args = (read_args_t *) argsRead;
@@ -94,13 +106,15 @@ int main() {
     read_args.source_ip = "scanme.nmap.org";
     read_args.port = 22;
     read_args.port_array = &port_array;
-    if (isHostUp(&send_args, &read_args) == 1) {
-        printf("Host seems up.\n");
-    } else {
-        printf("Host seems down. QUITTING!\n");
-        return 1;
-    }
-    scanTCPSYNOnePort(&send_args, &read_args);
+
+    hello();
+    // if (isHostUp(&send_args, &read_args) == 1) {
+    //     printf("Host seems up.\n");
+    // } else {
+    //     printf("Host seems down. QUITTING!\n");
+    //     return 1;
+    // }
+    // scanTCPSYNOnePort(&send_args, &read_args);
 
     free_port_array(&port_array);
 
