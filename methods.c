@@ -2,6 +2,7 @@
 #include <pthread.h>
 #include "kernel.h"
 #include "methods.h"
+#include <time.h>
 
 void hello() {
     printf("\n╔╗─╔╦═══╦════╦══╗╔══╦══╦═══╦══╗\n"
@@ -10,7 +11,7 @@ void hello() {
             "║║╚╗║╔══╝─║║───║╔╗║─╚═╗║╔══╣║\n"
             "║║─║║╚══╗─║║─╔═╝║║╚═╦═╝║╚══╣╚═╗\n"
             "╚╝─╚╩═══╝─╚╝─╚══╝╚══╩══╩═══╩══╝\n"
-            "by realnotema\n\n"
+            "\n"
     );
 
 }
@@ -88,11 +89,39 @@ void scanTCPSYNDSysPorts (void *argsSend, void *argsRead) {
     printPortSummary(read_args->port_array);
 }
 
+void menu() {
+    DynamicPortArray port_array;
+    init_port_array(&port_array, 10);
+    send_args_tcp_t send_args;
+    read_args_t read_args;
+    pcap_if_t *it;
+
+    send_args.dest_ip = (char *) malloc(15*sizeof(char));
+    pcap_findalldevs(&it, errbuf_pcap);
+    printf("Interface (default %s): ", it->name);
+    scanf("%s", send_args.interface);
+    read_args.interface = send_args.interface;
+    pcap_freealldevs(it);
+    printf("IP (or domain name): ");
+    scanf("%s", send_args.dest_ip);
+    read_args.source_ip = send_args.dest_ip;
+    printf("Port (or range): ");
+    scanf("%d", &send_args.port);
+    read_args.port = send_args.port;
+    read_args.proto = "tcp";
+    send_args.flags = 0x02;
+
+    read_args.port_array = &port_array;
+    system("clear");
+    hello();
+    printf("interfacex");
+}
 // Del. soon
 int main() {
     srand(time(NULL));
     DynamicPortArray port_array;
     init_port_array(&port_array, 10);
+    
 
     send_args_tcp_t send_args;
     send_args.interface = "en0";
@@ -108,14 +137,15 @@ int main() {
     read_args.port_array = &port_array;
 
     hello();
+    //menu();
     // if (isHostUp(&send_args, &read_args) == 1) {
-    //     printf("Host seems up.\n");
-    // } else {
-    //     printf("Host seems down. QUITTING!\n");
-    //     return 1;
-    // }
-    // scanTCPSYNOnePort(&send_args, &read_args);
-
+    //      printf("Host seems up.\n");
+    //  } else {
+    //      printf("Host seems down. QUITTING!\n");
+    //      return 1;
+    //  }
+    scanTCPSYNDSysPorts(&send_args, &read_args);
+    printf("For %lu sec.\n", clock()/1000);
     free_port_array(&port_array);
 
     return 0;

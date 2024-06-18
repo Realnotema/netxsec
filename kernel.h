@@ -40,7 +40,7 @@ typedef struct {
 typedef struct {
     const char *interface;
     int port;
-    const char *source_ip;
+    char *source_ip;
     char *proto;
     uint8_t flags;
     DynamicPortArray *port_array;
