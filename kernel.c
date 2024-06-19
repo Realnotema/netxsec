@@ -24,6 +24,7 @@ Code by Realnotema
 #include "kernel.h"
 
 int host_up = 0;
+int count_ports = 0;
 
 void init_port_array(DynamicPortArray *arr, int initial_capacity) {
     arr->ports = (int *)malloc(initial_capacity * sizeof(int));
@@ -65,7 +66,7 @@ void free_port_array(DynamicPortArray *arr) {
 
 libnet_t *kernelBuildTCP(libnet_t *lc, int port, uint8_t flags, u_int32_t ipaddr, char errbuf_libnet[]) {
     libnet_ptag_t tcp_tag = libnet_build_tcp(
-            57014,
+            51100,
             port,
             0,
             0,
@@ -120,6 +121,8 @@ void *kernelSendTCP(void *args) {
     if (written == -1) {
         fprintf(stderr, "Error: Failed to send TCP packet - %s\n", libnet_geterror(lc));
     } 
+
+
 
     libnet_destroy(lc);
     return NULL;
@@ -238,6 +241,7 @@ void *kernelRead(void *args) {
             struct tcphdr *tcp_hdr = (struct tcphdr *)(packet + sizeof(struct ether_header) + ip_hdr->ip_hl * 4);
 
             if ((tcp_hdr->th_flags & (TH_SYN | TH_ACK)) == (TH_SYN | TH_ACK)) {
+                printf("опаньки\n");
                 push_port(info->port_array, ntohs(tcp_hdr->th_sport));
             }
         }

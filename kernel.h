@@ -49,6 +49,7 @@ typedef struct {
 static char errbuf_libnet[LIBNET_ERRBUF_SIZE];
 static char errbuf_pcap[PCAP_ERRBUF_SIZE];
 extern int host_up;
+extern int count_ports;
 
 libnet_t *kernelBuildTCP(libnet_t *lc, int port, uint8_t flags, u_int32_t ipaddr, char errbuf_libnet[]);
 
